@@ -1,10 +1,10 @@
 const express = require('express');
 const axios = require('axios');
 require('dotenv').config();
-
+const cors=require("cors")
 const app = express();
 app.use(express.json());
-
+app.use(cors())
 app.get("/", (req, res) => {
   res.status(201).send("Welcome, see endpoints");
 });
