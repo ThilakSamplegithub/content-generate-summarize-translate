@@ -1,104 +1,87 @@
 const express = require('express');
-const OpenAI = require('openai');
+const axios = require('axios');
 require('dotenv').config();
-const cors=require("cors")
-const app = express();
-const port = process.env.PORT;
 
+const app = express();
 app.use(express.json());
-app.use(cors())
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 app.get("/", (req, res) => {
-  res.status(200).send("Welcome and use GPT-3.5 Turbo only, not Davinci engine");
+  res.status(201).send("Welcome, see endpoints");
 });
+
+// Replace 'YOUR_API_KEY' with your actual OpenAI API key
+const apiKey = process.env.OPENAI_API_KEY;
 
 app.post('/generate-text', async (req, res) => {
   try {
-    const userMessage = req.body.prompt; // Assuming the prompt comes from the request
-    const response = await openai.chat.completions.create({
+    const { prompt, max_tokens } = req.body;
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: "gpt-3.5-turbo",
       messages: [
-        {
-          "role": "user",
-          "content": userMessage,
-        }
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: prompt }
       ],
-      temperature: 1,
-      max_tokens: 256,
-      top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0,
+      max_tokens,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
     });
-
-    const generatedText = response.choices[0].message.content;
-    return res.json({ generatedText });
+    console.log(response.data.choices[0].message.content,"is response")
+    res.json(response.data.choices[0].message.content);
   } catch (error) {
-    console.error(error.message);
-    res.status(500).json({ error: 'Text generation failed' });
+    console.error(error.message,"is error");
+    res.status(500).json({ error: 'An error occurred while generating text.' });
   }
 });
-// "https://api.openai.com/v1/chat/completions"
+
 app.post('/summarize-text', async (req, res) => {
-  const text = req.body.text;
-
   try {
-    const response = await openai.chat.completions.create({
+    const { text, max_tokens } = req.body;
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: "gpt-3.5-turbo",
       messages: [
-        {
-          "role": "system",
-          "content": "You are a helpful assistant that summarizes text:",
-        },
-        {
-          "role": "user",
-          "content": text,
-        }
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: `Summarize the following text: ${text}` }
       ],
-      temperature: 1,
-      max_tokens: 150,
+      max_tokens,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
     });
-
-    const summarizedText = response.choices[0].message.content;
-    res.json({ summarizedText });
+    res.json(response.data.choices[0].message.content);
   } catch (error) {
     console.error(error.message);
-    res.status(500).json({ error: 'Text summarization failed' });
+    res.status(500).json({ error: 'An error occurred while summarizing text.' });
   }
 });
 
-app.post('/translate', async (req, res) => {
-  const text = req.body.text;
-  const sourceLanguage = req.body.sourceLanguage;
-  const targetLanguage = req.body.targetLanguage;
-
+app.post('/translate-text', async (req, res) => {
   try {
-    const response = await openai.chat.completions.create({
+    const { text, target_language } = req.body;
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: "gpt-3.5-turbo",
       messages: [
-        {
-          "role": "system",
-          "content": `Translate the following text from ${sourceLanguage} to ${targetLanguage}:`,
-        },
-        {
-          "role": "user",
-          "content": text,
-        }
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: `Translate the following text to ${target_language}: ${text}` }
       ],
-      temperature: 1,
-      max_tokens: 150,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
     });
-
-    const translatedText = response.choices[0].message.content;
-    res.json({ translatedText });
+    res.json(response.data.choices[0].message.content);
   } catch (error) {
     console.error(error.message);
-    res.status(500).json({ error: 'Text translation failed' });
+    res.status(500).json({ error: 'An error occurred while translating text.' });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+const PORT = process.env.PORT;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
